@@ -1,6 +1,8 @@
 const Physician = require("../models/Physicians");
 const Sequelize = require("sequelize");
 const Physicians = require("../models/Physicians");
+const bcrypt = require("bcryptjs");
+
 
 
 module.exports = {
@@ -24,16 +26,25 @@ module.exports = {
         if (!name || !email || !password) {
             res.status(400).json({ msg: "Dados obrigatórios não foram preenchidos." });
         }
+
+        const passwordValid = passwordValidation(password);
+        if (passwordValid !== "OK")
+            return res.status(400).json({ msg: passwordValid });
+
         const isPhysicianNew = await Physician.findOne({
             where: { email },
         });
+
         if (isPhysicianNew)
             res.status(403).json({ msg: "Médico já foi cadastrado." });
         else {
+            const salt = bcrypt.genSaltSync(12);
+            const hash = bcrypt.hashSync(password, salt);
+
             const physician = await Physician.create({
                 name,
                 email,
-                password,
+                password: hash,
             }).catch((error) => {
                 res.status(500).json({ msg: "Não foi possivel inserir os dados" });
             });
@@ -68,12 +79,45 @@ module.exports = {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
         const deleted = await Physician.destroy({
-          where: {id,},
+            where: { id, },
         });
         if (deleted <= 0)
-          return res.status(404).json({ error: "Physician not found" }); 
-        return res.json({msg: "Médico excluido com sucesso"});
-      },
+            return res.status(404).json({ error: "Physician not found" });
+        return res.json({ msg: "Médico excluido com sucesso" });
+    },
+
+    async authentication(req, res) {
+        const email = req.body.email;
+        const password = req.body.password;
+
+        if (!email || !password)
+            return res.status(400).json({ msg: "Campos obrigatórios vazios! " });
+        try {
+            const physician = await Physician.findOne({
+                where: { email },
+            });
+
+            if (!physician)
+                return res.status(404).json({ msg: "Usuário ou senha inválidos." });
+            else {
+                if (password === physician.password)
+                    return res.status(200).json({ msg: "Autenticado com sucesso" });
+                else
+                    return res.status(200).json({ msg: "Usuário ou senha inválidos." });
+            }
+        } catch (error) {
+            res.status(500).json(error);
+        }
+    },
 
 }
 
+function passwordValidation(password) {
+    if (password.length < 8)
+        return "Senha deve ter no mínimo 8 caracteres.";
+    else if (!password.match(/[a-zA-Z]/g))
+        return "Senha deve ter no mínimo uma letra.";
+    else if (!password.match(/[0-9]+/))
+        return "Senha deve ter no mínimo um número.";
+    else return "OK";
+}
