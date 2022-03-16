@@ -2,7 +2,7 @@ const Physician = require("../models/Physicians");
 const Sequelize = require("sequelize");
 const Physicians = require("../models/Physicians");
 const bcrypt = require("bcryptjs");
-
+const jwt = require("jsonwebtoken");
 
 
 module.exports = {
@@ -100,7 +100,7 @@ module.exports = {
             if (!physician)
                 return res.status(404).json({ msg: "Usuário ou senha inválidos." });
             else {
-                if (password === physician.password)
+                if (bcrypt.compareSync(password, physician.password))
                     return res.status(200).json({ msg: "Autenticado com sucesso" });
                 else
                     return res.status(200).json({ msg: "Usuário ou senha inválidos." });
@@ -120,4 +120,15 @@ function passwordValidation(password) {
     else if (!password.match(/[0-9]+/))
         return "Senha deve ter no mínimo um número.";
     else return "OK";
+}
+
+function generateToken(id) {
+	console.log(process.env.JWT_SECRET);
+	process.env.JWT_SECRET = Math.random().toString(36).slice(-20);
+	console.log(process.env.JWT_SECRET);
+	const token = jwt.sign({ id }, process.env.JWT_SECRET, {
+		expiresIn: 82800, //Token expera em 24 horas
+	});
+	console.log(token);
+	return token;
 }
