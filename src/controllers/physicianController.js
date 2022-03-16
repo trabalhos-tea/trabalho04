@@ -100,10 +100,12 @@ module.exports = {
             if (!physician)
                 return res.status(404).json({ msg: "Usuário ou senha inválidos." });
             else {
-                if (bcrypt.compareSync(password, physician.password))
-                    return res.status(200).json({ msg: "Autenticado com sucesso" });
+                if (bcrypt.compareSync(password, physician.password)) {
+                    const token = generateToken(physician.id);
+                    return res.status(200).json({ msg: "Autenticado com sucesso", token });
+                }
                 else
-                    return res.status(200).json({ msg: "Usuário ou senha inválidos." });
+                    return res.status(404).json({ msg: "Usuário ou senha inválidos." });
             }
         } catch (error) {
             res.status(500).json(error);
@@ -123,12 +125,9 @@ function passwordValidation(password) {
 }
 
 function generateToken(id) {
-	console.log(process.env.JWT_SECRET);
-	process.env.JWT_SECRET = Math.random().toString(36).slice(-20);
-	console.log(process.env.JWT_SECRET);
-	const token = jwt.sign({ id }, process.env.JWT_SECRET, {
-		expiresIn: 82800, //Token expera em 24 horas
-	});
-	console.log(token);
-	return token;
+    process.env.JWT_SECRET = Math.random().toString(36).slice(-20);
+    const token = jwt.sign({ id }, process.env.JWT_SECRET, {
+        expiresIn: 82800, //Token expera em 24 horas
+    });
+    return token;
 }
